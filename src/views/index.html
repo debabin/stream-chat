@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <title>Stream chat</title>
+
+    <style>
+      .--dark-theme {
+        --chat-background: rgba(0, 0, 0, 0.85);
+        --chat-panel-background: #131719;
+        --chat-bubble-background: #14181a;
+        --chat-bubble-active-background: #171a1b;
+        --chat-add-button-background: #212324;
+        --chat-send-button-background: #8147fc;
+        --chat-text-color: #a3a3a3;
+        --chat-options-svg: #a3a3a3;
+
+        display: flex;
+        gap: 15px;
+        flex-direction: column;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+          Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        margin: 0;
+      }
+
+      #chat {
+        background: var(--chat-background);
+        max-width: 100%;
+        height: 100vh;
+        padding: 15px;
+        box-sizing: border-box;
+        position: relative;
+        overflow: hidden;
+      }
+
+      #chat .btn-icon {
+        position: relative;
+        cursor: pointer;
+      }
+      #chat .btn-icon svg {
+        stroke: #fff;
+        fill: #fff;
+        width: 50%;
+        height: auto;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+      #chat .chat__conversation-board {
+        height: 100%;
+        overflow: auto;
+      }
+      #chat .chat__conversation-board__message-container.reversed {
+        flex-direction: row-reverse;
+      }
+      #chat
+        .chat__conversation-board__message-container.reversed
+        .chat__conversation-board__message__bubble {
+        position: relative;
+      }
+      #chat
+        .chat__conversation-board__message-container.reversed
+        .chat__conversation-board__message__bubble
+        span:not(:last-child) {
+        margin: 0 0 15px 0;
+      }
+      #chat
+        .chat__conversation-board__message-container.reversed
+        .chat__conversation-board__message__person {
+        margin: 0 0 0 1.2em;
+      }
+      #chat
+        .chat__conversation-board__message-container.reversed
+        .chat__conversation-board__message__options {
+        align-self: center;
+        position: absolute;
+        left: 0;
+        display: none;
+      }
+      #chat .chat__conversation-board__message-container {
+        position: relative;
+        display: flex;
+        flex-direction: row;
+      }
+      #chat
+        .chat__conversation-board__message-container:hover
+        .chat__conversation-board__message__options {
+        display: flex;
+        align-items: center;
+      }
+      #chat .chat__conversation-board__message-container:hover .option-item:not(:last-child) {
+        margin: 0 0.5em 0 0;
+      }
+      #chat .chat__conversation-board__message-container:not(:last-child) {
+        margin: 0 0 15px 0;
+      }
+      #chat .chat__conversation-board__message__person {
+        text-align: center;
+        margin: 0 10px 0 0;
+      }
+      #chat .chat__conversation-board__message__person__avatar {
+        height: 35px;
+        width: 35px;
+        overflow: hidden;
+        border-radius: 20%;
+        user-select: none;
+        ms-user-select: none;
+        position: relative;
+      }
+      #chat .chat__conversation-board__message__person__avatar::before {
+        content: '';
+        position: absolute;
+        height: 100%;
+        width: 100%;
+      }
+      #chat .chat__conversation-board__message__person__avatar img {
+        height: 100%;
+        width: auto;
+      }
+      #chat .chat__conversation-board__message__person__nickname {
+        font-size: 12px;
+        color: #484848;
+        user-select: none;
+        display: none;
+      }
+      #chat .chat__conversation-board__message__context {
+        max-width: 100%;
+        align-self: flex-end;
+      }
+      #chat .chat__conversation-board__message__options {
+        align-self: center;
+        position: absolute;
+        right: 0;
+        display: none;
+      }
+      #chat .chat__conversation-board__message__options .option-item {
+        border: 0;
+        background: 0;
+        padding: 0;
+        margin: 0;
+        height: 16px;
+        width: 16px;
+        outline: none;
+      }
+      #chat .chat__conversation-board__message__options .emoji-button svg {
+        stroke: var(--chat-options-svg);
+        fill: transparent;
+        width: 100%;
+      }
+      #chat .chat__conversation-board__message__options .more-button svg {
+        stroke: var(--chat-options-svg);
+        fill: transparent;
+        width: 100%;
+      }
+      #chat .chat__conversation-board__message__bubble span {
+        width: fit-content;
+        display: inline-table;
+        word-wrap: break-word;
+        background: var(--chat-bubble-background);
+        font-size: 16px;
+        color: var(--chat-text-color);
+        padding: 0.5em 0.8em;
+        line-height: 1.5;
+        border-radius: 6px;
+        font-family: 'Lato', sans-serif;
+      }
+      #chat .chat__conversation-board__message__bubble:not(:last-child) {
+        margin: 0 0 0.3em;
+      }
+
+      #chat .chat__conversation-panel {
+        background: var(--chat-panel-background);
+        border-radius: 12px;
+        padding: 0 1em;
+        height: 55px;
+        margin: 0.5em 0 0;
+      }
+      #chat .chat__conversation-panel__container {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        height: 100%;
+      }
+      #chat .chat__conversation-panel__container .panel-item:not(:last-child) {
+        margin: 0 1em 0 0;
+      }
+      #chat .chat__conversation-panel__button {
+        background: grey;
+        height: 20px;
+        width: 30px;
+        border: 0;
+        padding: 0;
+        outline: none;
+        cursor: pointer;
+      }
+      #chat .chat__conversation-panel .add-file-button {
+        height: 23px;
+        min-width: 23px;
+        width: 23px;
+        background: var(--chat-add-button-background);
+        border-radius: 50%;
+      }
+      #chat .chat__conversation-panel .add-file-button svg {
+        width: 70%;
+        stroke: #54575c;
+      }
+      #chat .chat__conversation-panel .emoji-button {
+        min-width: 23px;
+        width: 23px;
+        height: 23px;
+        background: transparent;
+        border-radius: 50%;
+      }
+      #chat .chat__conversation-panel .emoji-button svg {
+        width: 100%;
+        fill: transparent;
+        stroke: #54575c;
+      }
+      #chat .chat__conversation-panel .send-message-button {
+        background: var(--chat-send-button-background);
+        height: 30px;
+        min-width: 30px;
+        border-radius: 50%;
+        transition: 0.3s ease;
+      }
+      #chat .chat__conversation-panel .send-message-button:active {
+        transform: scale(0.97);
+      }
+      #chat .chat__conversation-panel .send-message-button svg {
+        margin: 1px -1px;
+      }
+      #chat .chat__conversation-panel__input {
+        width: 100%;
+        height: 100%;
+        outline: none;
+        position: relative;
+        color: var(--chat-text-color);
+        font-size: 13px;
+        background: transparent;
+        border: 0;
+        font-family: 'Lato', sans-serif;
+        resize: none;
+      }
+
+      #chat .chat__conversation-board__message__platform {
+        width: 15px;
+        height: 15px;
+        background-repeat: no-repeat;
+        background-size: 15px 15px;
+      }
+      #chat .platform_youtube {
+        background-image: url("data:image/svg+xml,%3Csvg style='color: red' xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' class='bi bi-youtube' viewBox='0 0 16 16'%3E%3Cpath d='M8.051 1.999h.089c.822.003 4.987.033 6.11.335a2.01 2.01 0 0 1 1.415 1.42c.101.38.172.883.22 1.402l.01.104.022.26.008.104c.065.914.073 1.77.074 1.957v.075c-.001.194-.01 1.108-.082 2.06l-.008.105-.009.104c-.05.572-.124 1.14-.235 1.558a2.007 2.007 0 0 1-1.415 1.42c-1.16.312-5.569.334-6.18.335h-.142c-.309 0-1.587-.006-2.927-.052l-.17-.006-.087-.004-.171-.007-.171-.007c-1.11-.049-2.167-.128-2.654-.26a2.007 2.007 0 0 1-1.415-1.419c-.111-.417-.185-.986-.235-1.558L.09 9.82l-.008-.104A31.4 31.4 0 0 1 0 7.68v-.123c.002-.215.01-.958.064-1.778l.007-.103.003-.052.008-.104.022-.26.01-.104c.048-.519.119-1.023.22-1.402a2.007 2.007 0 0 1 1.415-1.42c.487-.13 1.544-.21 2.654-.26l.17-.007.172-.006.086-.003.171-.007A99.788 99.788 0 0 1 7.858 2h.193zM6.4 5.209v4.818l4.157-2.408L6.4 5.209z' fill='red'%3E%3C/path%3E%3C/svg%3E");
+      }
+
+      #chat .platform_twitch {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%239147ff' class='bi bi-twitch' viewBox='0 0 16 16'%3E%3Cpath d='M3.857 0 1 2.857v10.286h3.429V16l2.857-2.857H9.57L14.714 8V0H3.857zm9.714 7.429-2.285 2.285H9l-2 2v-2H4.429V1.143h9.142v6.286z'/%3E%3Cpath d='M11.857 3.143h-1.143V6.57h1.143V3.143zm-3.143 0H7.571V6.57h1.143V3.143z'/%3E%3C/svg%3E");
+      }
+
+      #chat .chat__conversation-board__message__title {
+        display: flex;
+        justify-content: flex-start;
+        gap: 6px;
+        font-size: 14px;
+        color: #ffffff;
+        align-items: center;
+        margin-bottom: 5px;
+      }
+
+      #chat .google-auth-container {
+        display: flex;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        color: #ffffff;
+      }
+
+      #chat .google-auth-container button {
+        padding: 7px 10px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        color: #ffffff;
+        background-color: var(--chat-bubble-active-background);
+      }
+
+      @media only screen and (max-width: 600px) {
+        #chat {
+          margin: 0;
+          border-radius: 0;
+        }
+        #chat .chat__conversation-board {
+          height: 100%;
+        }
+        #chat .chat__conversation-board__message__options {
+          display: none !important;
+        }
+      }
+      ::-webkit-scrollbar {
+        height: 7px;
+        width: 4px;
+        background: rgba(0, 0, 0, 0);
+      }
+
+      ::-webkit-scrollbar-thumb {
+        -webkit-border-radius: 1ex;
+        background: var(--chat-bubble-background);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="--dark-theme" id="chat">
+      <div id="google-auth" class="google-auth-container">
+        <div>for google comments needs auth</div>
+        <button id="google-auth-button">auth</button>
+      </div>
+      <div class="chat__conversation-board" id="board"></div>
+    </div>
+  </body>
+  <script>
+    const createMessage = (message) => {
+      console.log('message', message);
+      const container = document.createElement('div');
+      container.className = 'chat__conversation-board__message-container';
+
+      const person = document.createElement('div');
+      person.className = 'chat__conversation-board__message__person';
+      const avatar = document.createElement('div');
+      avatar.className = 'chat__conversation-board__message__person__avatar';
+
+      if (message.image) {
+        const img = document.createElement('img');
+        img.src = message.image.src;
+        img.alt = message.image.alt;
+
+        avatar.appendChild(img);
+        person.appendChild(avatar);
+        container.appendChild(person);
+      }
+
+      const messageContext = document.createElement('div');
+      messageContext.className = 'chat__conversation-board__message__context';
+
+      const messageBubble = document.createElement('div');
+      messageBubble.className = 'chat__conversation-board__message__bubble';
+
+      const title = document.createElement('div');
+      title.className = 'chat__conversation-board__message__title';
+      const username = document.createElement('div');
+      username.innerHTML = message.username;
+      const platform = document.createElement('div');
+      platform.classList = `chat__conversation-board__message__platform platform_${message.platform}`;
+
+      const text = document.createElement('span');
+      text.innerHTML = message.text;
+
+      title.appendChild(platform);
+      title.appendChild(username);
+
+      messageBubble.appendChild(title);
+      messageBubble.appendChild(text);
+
+      messageContext.appendChild(messageBubble);
+      container.appendChild(messageContext);
+
+      boardContainer.appendChild(container);
+
+      boardContainer.scrollTop = boardContainer.scrollHeight;
+    };
+  </script>
+  <script async>
+    const chatContainer = document.getElementById('chat');
+    const boardContainer = document.getElementById('board');
+    const googleAuthContainer = document.getElementById('google-auth');
+    const googleAuthButton = document.getElementById('google-auth-button');
+  </script>
+  <script>
+    const socket = io();
+    const auth = async () => {
+      const authResponse = await fetch('http://localhost:3001/youtube/auth').then((data) =>
+        data.json()
+      );
+
+      if (authResponse.url) {
+        return window.open(authResponse.url, '_blank');
+      }
+    };
+
+    googleAuthButton.addEventListener('click', auth);
+    socket.on('message', createMessage);
+    socket.on('messages', (messages) => messages.forEach(createMessage));
+    socket.on('googleAuth', async (message) => {
+      chatContainer.removeChild(googleAuthContainer);
+      fetch('http://localhost:3001/youtube/init');
+    });
+  </script>
+  <script async>
+    const init = async () => {
+      const messages = await fetch('http://localhost:3001/default').then((data) => data.json());
+      messages.forEach(createMessage);
+
+      const authResponse = await fetch('http://localhost:3001/youtube/auth').then((data) =>
+        data.json()
+      );
+      if (!authResponse.success) return;
+
+      chatContainer.removeChild(googleAuthContainer);
+      fetch('http://localhost:3001/youtube/init');
+    };
+
+    init();
+  </script>
+</html>
