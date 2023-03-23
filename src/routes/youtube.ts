@@ -83,14 +83,13 @@ router.get('/initPoling', async (req, res) => {
               } satisfies Message)
           );
 
+          const pollingTime = 10000;
+
           const youTubeMessages = req.app.get('messages').youtube;
           if (youTubeMessages.length === messages.length) {
             if (!liveChatMessages.data.pollingIntervalMillis) return;
 
-            setTimeout(
-              () => liveChatMessagesFn(liveChatId),
-              liveChatMessages.data.pollingIntervalMillis
-            );
+            setTimeout(() => liveChatMessagesFn(liveChatId), pollingTime);
             return;
           }
           req.app.set('messages', {
@@ -103,7 +102,8 @@ router.get('/initPoling', async (req, res) => {
 
           setTimeout(
             () => liveChatMessagesFn(liveChatId),
-            liveChatMessages.data.pollingIntervalMillis
+            // liveChatMessages.data.pollingIntervalMillis
+            pollingTime
           );
         });
 

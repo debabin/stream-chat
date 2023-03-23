@@ -4,7 +4,7 @@
   "description": "🍿 one stream for all",
   "main": "index.js",
   "scripts": {
-    "build": "shx rm -r dist && tsc -p tsconfig.json && shx cp -R src/views dist/src",
+    "build": "shx rm -f -r dist && tsc -p tsconfig.json && shx cp -R src/views dist/src",
     "start": "node dist/index.js",
     "dev": "concurrently \"npx tsc --watch\" \"nodemon -q dist/index.js\"",
     "lint": "eslint . --ext ts --no-error-on-unmatched-pattern",
