@@ -9,7 +9,8 @@
     "dev": "concurrently \"npx tsc --watch\" \"nodemon -q dist/index.js\"",
     "lint": "eslint . --ext ts --no-error-on-unmatched-pattern",
     "format": "prettier --write **/*.ts",
-    "lint-staged": "lint-staged --no-stash"
+    "lint-staged": "lint-staged --no-stash",
+    "prepare": "husky install"
   },
   "lint-staged": {
     "*.js": "yarn format",
