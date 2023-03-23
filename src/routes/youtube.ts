@@ -1,6 +1,8 @@
 import express from 'express';
 import { google } from 'googleapis';
 
+import type { Message } from '../utils/types';
+
 const router = express.Router();
 const SCOPES = ['https://www.googleapis.com/auth/youtube.readonly'];
 const oauth2Client = new google.auth.OAuth2(
@@ -38,7 +40,7 @@ router.get('/oauthcallback', async (req, res) => {
 });
 
 let isPollingOn = false;
-router.get('/init', async (req, res) => {
+router.get('/initPoling', async (req, res) => {
   if (isPollingOn) return res.send();
 
   try {
@@ -69,18 +71,17 @@ router.get('/init', async (req, res) => {
 
           const io = req.app.get('socketio');
 
-          const messages = liveChatMessages.data.items.map((message) => ({
-            publishedTime: message.snippet?.publishedAt
-              ? new Date(message.snippet?.publishedAt).valueOf()
-              : new Date().valueOf(),
-            platform: 'youtube',
-            username: message.authorDetails?.displayName,
-            // image: {
-            //   alt: message.authorDetails?.displayName,
-            //   src: message.authorDetails?.profileImageUrl
-            // },
-            text: message.snippet?.textMessageDetails?.messageText
-          }));
+          const messages = liveChatMessages.data.items.map(
+            (message) =>
+              ({
+                publishedTime: message.snippet?.publishedAt
+                  ? new Date(message.snippet?.publishedAt).valueOf()
+                  : new Date().valueOf(),
+                platform: 'youtube',
+                username: message.authorDetails?.displayName ?? 'undefined',
+                text: message.snippet?.textMessageDetails?.messageText ?? 'undefined'
+              } satisfies Message)
+          );
 
           const youTubeMessages = req.app.get('messages').youtube;
           if (youTubeMessages.length === messages.length) {

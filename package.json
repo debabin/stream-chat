@@ -1,14 +1,15 @@
 {
   "name": "stream-chat",
   "version": "1.0.0",
-  "description": "",
+  "description": "🍿 one stream for all",
   "main": "index.js",
   "scripts": {
     "build": "shx rm -r dist && tsc -p tsconfig.json && shx cp -R src/views dist/src",
     "start": "node dist/index.js",
     "dev": "concurrently \"npx tsc --watch\" \"nodemon -q dist/index.js\"",
     "lint": "eslint . --ext ts --no-error-on-unmatched-pattern",
-    "format": "prettier --write {src,bin}/**/*.ts"
+    "format": "prettier --write **/*.ts",
+    "lint-staged": "lint-staged --no-stash"
   },
   "lint-staged": {
     "*.js": "yarn format",
@@ -44,7 +45,10 @@
     "eslint-import-resolver-typescript": "^3.4.1",
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-prettier": "^4.2.1",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.2.0",
     "nodemon": "^2.0.21",
+    "prettier": "^2.8.6",
     "shx": "^0.3.4",
     "typescript": "^5.0.2"
   }

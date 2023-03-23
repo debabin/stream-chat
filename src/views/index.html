@@ -400,8 +400,8 @@
   </script>
   <script async>
     const init = async () => {
-      const messages = await fetch('http://localhost:3001/default').then((data) => data.json());
-      messages.forEach(createMessage);
+      const initResponse = await fetch('http://localhost:3001/init').then((data) => data.json());
+      initResponse.forEach(createMessage);
 
       const authResponse = await fetch('http://localhost:3001/youtube/auth').then((data) =>
         data.json()
@@ -409,7 +409,7 @@
       if (!authResponse.success) return;
 
       chatContainer.removeChild(googleAuthContainer);
-      fetch('http://localhost:3001/youtube/init');
+      fetch('http://localhost:3001/youtube/initPoling');
     };
 
     init();

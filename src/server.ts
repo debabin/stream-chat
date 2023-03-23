@@ -6,12 +6,9 @@ import { Server } from 'socket.io';
 import tmi from 'tmi.js';
 
 import { youTubeRouter } from './routes';
+import type { Message } from './utils/types';
 
-// const token = process.env.TWITCH_TOKEN;
 const username = process.env.TWITCH_USERNAME;
-
-// if (!token)
-//   throw new Error('You should provide twitch token in .env (https://twitchtokengenerator.com/)');
 if (!username) throw new Error('You should provide twitch username in .env');
 
 const port = process.env.PORT ?? 3001;
@@ -24,23 +21,24 @@ const client = new tmi.Client({
   channels: [username]
 });
 
-app.set('socketio', io);
-app.set('messages', {
+const message: { youtube: Message[]; twitch: Message[] } = {
   youtube: [],
   twitch: []
-});
+};
+app.set('socketio', io);
+app.set('messages', message);
 app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, '/views/index.html'));
 });
 
-app.use('/youtube', youTubeRouter);
-app.get('/default', (req, res) => {
+app.get('/init', (req, res) => {
   const messages = req.app.get('messages');
   const sortedMessages = [...messages.twitch, ...messages.youtube].sort(
     (a, b) => a.publishedTime - b.publishedTime
   );
   res.send(sortedMessages);
 });
+app.use('/youtube', youTubeRouter);
 
 client.connect().catch(console.error);
 io.on('connection', () => {
@@ -51,14 +49,15 @@ client.on('message', (_channel, tags, message) => {
   const messages = app.get('messages');
   const twitchMessage = {
     text: message,
-    username: tags.username,
+    username: tags.username ?? 'undefined',
     platform: 'twitch',
-    publishedTime: tags['tmi-sent-ts'] ? +tags['tmi-sent-ts'] : new Date().valueOf
-  };
+    publishedTime: tags['tmi-sent-ts'] ? +tags['tmi-sent-ts'] : +new Date().valueOf
+  } satisfies Message;
 
   app.set('messages', { ...messages, twitch: [...messages.twitch, twitchMessage] });
   io.sockets.emit('message', twitchMessage);
 });
+
 server.listen(port, () => {
-  console.log(`⚡️[server]: Server is running at http://localhost:${port}`);
+  console.log(`⚡️ [server]: Server is running at http://localhost:${port}`);
 });
