@@ -12,22 +12,30 @@ const oauth2Client = new google.auth.OAuth2(
 );
 
 router.get('/auth', async (_req, res) => {
-  try {
-    const accessToken = await oauth2Client.getAccessToken();
-    return res.send({ success: !!accessToken });
-  } catch (e) {
-    const url = oauth2Client.generateAuthUrl({
-      access_type: 'offline',
-      scope: SCOPES
-    });
+  const url = oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: SCOPES
+  });
 
+  try {
+    const { token } = await oauth2Client.getAccessToken();
+
+    if (token) {
+      return res.send({ success: true });
+    }
+  } catch (e) {
     return res.send({ url });
   }
+
+  res.send({ url });
 });
 
 router.get('/oauthcallback', async (req, res) => {
   if (!req.query.code) return res.send();
   const { tokens } = await oauth2Client.getToken(req.query.code as string);
+
+  console.log(tokens);
+
   oauth2Client.setCredentials(tokens);
 
   google.options({
@@ -65,6 +73,7 @@ router.get('/initPoling', async (req, res) => {
       youtube.liveChatMessages
         .list({ ...liveChatMessagesParams, liveChatId })
         .then((liveChatMessages) => {
+          console.log('in polling 1');
           if (!liveChatMessages.data.items) {
             return res.send();
           }
@@ -83,7 +92,7 @@ router.get('/initPoling', async (req, res) => {
               } satisfies Message)
           );
 
-          const pollingTime = 10000;
+          const pollingTime = 100000;
 
           const youTubeMessages = req.app.get('messages').youtube;
           if (youTubeMessages.length === messages.length) {
@@ -100,6 +109,7 @@ router.get('/initPoling', async (req, res) => {
           io.sockets.emit('messages', messages.slice(youTubeMessages.length));
           if (!liveChatMessages.data.pollingIntervalMillis) return;
 
+          console.log('in polling 2');
           setTimeout(
             () => liveChatMessagesFn(liveChatId),
             // liveChatMessages.data.pollingIntervalMillis
@@ -111,6 +121,7 @@ router.get('/initPoling', async (req, res) => {
     isPollingOn = true;
     return res.send();
   } catch (e) {
+    console.log('@@@');
     console.log(e);
   }
 });

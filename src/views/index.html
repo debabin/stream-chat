@@ -395,7 +395,7 @@
     socket.on('messages', (messages) => messages.forEach(createMessage));
     socket.on('googleAuth', async (message) => {
       chatContainer.removeChild(googleAuthContainer);
-      fetch('http://localhost:3001/youtube/init');
+      fetch('http://localhost:3001/youtube/initPoling');
     });
   </script>
   <script async>
